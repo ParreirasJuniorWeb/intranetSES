@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom"; // Assuming you have react-router-dom for the Link component
+import { Link } from "react-router-dom";
 import "../App.css";
+import axios from "axios"; // Importa a biblioteca Axios
 
 const Forms_email = () => {
   const [validated, setValidated] = useState(false);
@@ -14,18 +15,18 @@ const Forms_email = () => {
     file: null,
   });
   const [errors, setErrors] = useState({});
+  const [isSending, setIsSending] = useState(false); // Novo estado para controlar o envio
 
   // Define allowed file types and max size
   const ALLOWED_FILE_TYPES = [
     "image/jpeg",
     "image/png",
     "application/pdf",
-    "application/msword", // .doc
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-    "application/vnd.ms-excel", // .xls
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-    "text/plain", // .txt
-    // Add more types as needed, but avoid executable types
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
   ];
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
 
@@ -50,7 +51,7 @@ const Forms_email = () => {
 
     // Full Name validation
     if (!formData.fullName.trim()) {
-      newErrors.validationDefault01 = "Por favor, insira seu nome completo.";
+      newErrors.fullName = "Por favor, insira seu nome completo.";
       isValid = false;
     }
 
@@ -61,21 +62,19 @@ const Forms_email = () => {
       isValid = false;
     } else if (!emailRegex.test(formData.email)) {
       newErrors.email =
-        "Por favor, insira um e-mail válido (ex: seu.nome@dominio.gov.br).";
-      isValid = false;
-    } else {
-      newErrors.email =
-        "Por favor, insira um e-mail (ex: nome.sobrenome@dominio.gob.br).";
+        "Por favor, insira um e-mail válido (ex: seu.nome@dominio.com).";
       isValid = false;
     }
 
     // DDD validation
-    if (!formData.ddd.trim() || !/^\d{2}$/.test(formData.ddd)) {
-      newErrors.ddd = "Por favor, insira um DDD válido (2 dígitos).";
+    if (!formData.ddd.trim()) {
+      newErrors.ddd = "Por favor, insira o DDD.";
+      isValid = false;
+    } else if (!/^\d{2}$/.test(formData.ddd)) {
+      newErrors.ddd = "O DDD deve conter exatamente 2 dígitos numéricos.";
       isValid = false;
     }
 
-    // Ramal validation
     // Ramal validation (Improved: must be 4 digits and only numbers)
     if (!formData.ramal.trim()) {
       newErrors.ramal = "Por favor, insira o ramal.";
@@ -87,13 +86,13 @@ const Forms_email = () => {
 
     // Subject validation
     if (!formData.subject.trim()) {
-      newErrors.validationDefault03 = "Por favor, insira o assunto do e-mail.";
+      newErrors.subject = "Por favor, insira o assunto do e-mail.";
       isValid = false;
     }
 
     // Message validation
     if (!formData.message.trim()) {
-      newErrors.validationTextarea = "Por favor, digite uma mensagem.";
+      newErrors.message = "Por favor, digite uma mensagem.";
       isValid = false;
     }
 
@@ -113,49 +112,93 @@ const Forms_email = () => {
       }
     }
 
-    // If you want to make the file field required, uncomment this:
-    /*
-    else {
-      newErrors.file = "Por favor, selecione um arquivo.";
-      isValid = false;
-    }
-    */
-
-    // File validation (optional, adjust as needed)
-    // if (!formData.file) {
-    //   newErrors.file = "Por favor, selecione um arquivo.";
-    //   isValid = false;
-    // }
-
     setErrors(newErrors);
     return isValid;
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault(); // Prevent default form submission behavior
-    event.stopPropagation(); // Stop event propagation
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-    setValidated(true); // Set validated to true to show validation feedback
+    setValidated(true);
 
     if (validateForm()) {
-      // Form is valid, proceed with submission
-      console.log("Formulário enviado com sucesso!", formData);
-      // Here you would typically send the data to a server
-      alert("Formulário enviado com sucesso!");
-      // Optionally reset the form
-      setFormData({
-        fullName: "",
-        email: "",
-        ddd: "",
-        ramal: "",
-        subject: "",
-        message: "",
-        file: null,
-      });
-      setErrors({});
-      setValidated(false);
+      setIsSending(true); // Indica que o envio está em andamento
+      try {
+        const formDataToSend = new FormData(); // Usar FormData para enviar arquivos
+        for (const key in formData) {
+          formDataToSend.append(key, formData[key]);
+        }
+        // No caso do arquivo, `formData.file` será um objeto File.
+        // O Multer no backend saberá como lidar com ele.
+        // Se `formData.file` for null, ele será appended como 'null' string.
+        // O backend precisa lidar com isso se o campo for opcional.
+        if (formData.file) {
+          formDataToSend.append("file", formData.file);
+        }
+
+        const response = await axios.post(
+          "http://localhost:5000/send-email",
+          formDataToSend,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data", // Axios pode definir isso automaticamente com FormData, mas explicitar é bom.
+            },
+          }
+        );
+
+        // Axios lança um erro para status 4xx/5xx, então `response.data` já é o que você quer no sucesso.
+        console.log("Formulário enviado com sucesso!", response.data);
+        alert("Sua mensagem foi enviada com sucesso!");
+
+        // Resetar formulário
+        setFormData({
+          fullName: "",
+          email: "",
+          ddd: "",
+          ramal: "",
+          subject: "",
+          message: "",
+          file: null,
+        });
+        setErrors({});
+        setValidated(false);
+      } catch (error) {
+        console.error("Erro ao enviar formulário:", error);
+        // Axios coloca a resposta de erro em `error.response.data`
+        if (error.response) {
+          // Erro de resposta do servidor (status 4xx ou 5xx)
+          console.error("Dados do erro do servidor:", error.response.data);
+          alert(
+            `Ocorreu um erro ao enviar sua mensagem: ${
+              error.response.data.message || "Erro desconhecido do servidor."
+            }`
+          );
+        } else if (error.request) {
+          // A requisição foi feita, mas nenhuma resposta foi recebida
+          console.error("Erro de requisição (sem resposta):", error.request);
+          alert(
+            "Não foi possível conectar ao servidor. Verifique sua conexão ou tente novamente mais tarde."
+          );
+        } else {
+          // Algo aconteceu na configuração da requisição que disparou um erro
+          console.error("Erro de configuração Axios:", error.message);
+          alert(`Ocorreu um erro inesperado: ${error.message}`);
+        }
+      } finally {
+        setIsSending(false); // Finaliza o estado de envio
+      }
     } else {
       console.log("Formulário contém erros de validação.");
+      // Adicionado foco automático no primeiro campo inválido
+      const firstInvalidField = document.querySelector(".is-invalid");
+      if (firstInvalidField) {
+        firstInvalidField.focus();
+        firstInvalidField.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
     }
   };
 
@@ -166,7 +209,7 @@ const Forms_email = () => {
           Preencha o formulário para contato via e-mail
         </h1>
         <div className="row">
-          {/* <!-- Logo SES  --> */}
+          {/* */}
           <div className="col-md-6">
             <Link to="/vpn" className="text-decoration-none">
               <div className="link-content mt-3">
@@ -174,15 +217,14 @@ const Forms_email = () => {
               </div>
             </Link>
           </div>
-          {/* <!-- E-MAIL FORM  --> */}
+          {/* */}
           <div className="col-md-6">
             <div className="link-content">
               <h3 className="p-2 mt-2 display-6">
                 Formulário de contato T.I SES
               </h3>
               <form
-                action=""
-                method="post"
+                enctype="multipart/form-data"
                 onSubmit={handleSubmit}
                 className={`mt-3 row g-3 needs-validation ${
                   validated ? "was-validated" : ""
@@ -196,27 +238,25 @@ const Forms_email = () => {
                   <input
                     type="text"
                     className={`form-control ${
-                      validated && errors.validationDefault01
+                      validated && errors.fullName
                         ? "is-invalid"
                         : validated &&
-                          !errors.validationDefault01 &&
+                          !errors.fullName &&
                           formData.fullName.trim()
                         ? "is-valid"
                         : ""
                     }`}
-                    required
                     id="fullName"
                     placeholder="Nome Completo"
                     value={formData.fullName}
                     onChange={handleChange}
+                    required
                   />
-                  {validated && errors.validationDefault01 ? (
-                    <div className="invalid-feedback">
-                      {errors.validationDefault01}
-                    </div>
+                  {validated && errors.fullName ? (
+                    <div className="invalid-feedback">{errors.fullName}</div>
                   ) : (
                     validated &&
-                    !errors.validationDefault01 &&
+                    !errors.fullName &&
                     formData.fullName.trim() && (
                       <div className="valid-feedback">Parece bom!</div>
                     )
@@ -229,12 +269,14 @@ const Forms_email = () => {
                   <input
                     type="email"
                     className={`form-control ${
-                      validated && errors.validationDefault02
+                      validated && errors.email
                         ? "is-invalid"
                         : validated &&
-                          !errors.validationDefault02 &&
+                          !errors.email &&
                           formData.email.trim() &&
-                          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+                          /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(
+                            formData.email
+                          )
                         ? "is-valid"
                         : ""
                     }`}
@@ -244,17 +286,15 @@ const Forms_email = () => {
                     onChange={handleChange}
                     required
                   />
-                  {validated && errors.validationDefault02 ? (
-                    <div className="invalid-feedback">
-                      {errors.validationDefault02}
-                    </div>
+                  {validated && errors.email ? (
+                    <div className="invalid-feedback">{errors.email}</div>
                   ) : (
                     validated &&
-                    !errors.validationDefault02 &&
+                    !errors.email &&
                     formData.email.trim() &&
-                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
-                      <div className="valid-feedback">Parece bom!</div>
-                    )
+                    /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(
+                      formData.email
+                    ) && <div className="valid-feedback">Parece bom!</div>
                   )}
                 </div>
                 <div className="col-md-4">
@@ -277,7 +317,7 @@ const Forms_email = () => {
                           ? "is-valid"
                           : ""
                       }`}
-                      id="ddd" // Separate DDD field for easier validation
+                      id="ddd"
                       placeholder="DDD"
                       value={formData.ddd}
                       onChange={handleChange}
@@ -288,10 +328,10 @@ const Forms_email = () => {
                     <input
                       type="tel"
                       className={`form-control ${
-                        validated && errors.validationDefaulRamal
+                        validated && errors.ramal // Use errors.ramal here
                           ? "is-invalid"
                           : validated &&
-                            !errors.validationDefaulRamal &&
+                            !errors.ramal &&
                             formData.ramal.trim() &&
                             /^\d{5}$/.test(formData.ramal)
                           ? "is-valid"
@@ -304,15 +344,14 @@ const Forms_email = () => {
                       required
                       maxLength="5"
                     />
-                    {validated &&
-                    (errors.ddd || errors.validationDefaulRamal) ? (
+                    {validated && (errors.ddd || errors.ramal) ? ( // Combine errors for display
                       <div className="invalid-feedback">
-                        {errors.ddd || errors.validationDefaulRamal}
+                        {errors.ddd || errors.ramal}
                       </div>
                     ) : (
                       validated &&
                       !errors.ddd &&
-                      !errors.validationDefaulRamal &&
+                      !errors.ramal &&
                       formData.ddd.trim() &&
                       /^\d{2}$/.test(formData.ddd) &&
                       formData.ramal.trim() &&
@@ -329,10 +368,10 @@ const Forms_email = () => {
                   <input
                     type="text"
                     className={`form-control ${
-                      validated && errors.validationDefault03
+                      validated && errors.subject
                         ? "is-invalid"
                         : validated &&
-                          !errors.validationDefault03 &&
+                          !errors.subject &&
                           formData.subject.trim()
                         ? "is-valid"
                         : ""
@@ -343,13 +382,11 @@ const Forms_email = () => {
                     onChange={handleChange}
                     required
                   />
-                  {validated && errors.validationDefault03 ? (
-                    <div className="invalid-feedback">
-                      {errors.validationDefault03}
-                    </div>
+                  {validated && errors.subject ? (
+                    <div className="invalid-feedback">{errors.subject}</div>
                   ) : (
                     validated &&
-                    !errors.validationDefault03 &&
+                    !errors.subject &&
                     formData.subject.trim() && (
                       <div className="valid-feedback">Parece bom!</div>
                     )
@@ -363,10 +400,10 @@ const Forms_email = () => {
                     cols={3}
                     rows={9}
                     className={`form-control ${
-                      validated && errors.validationTextarea
+                      validated && errors.message
                         ? "is-invalid"
                         : validated &&
-                          !errors.validationTextarea &&
+                          !errors.message &&
                           formData.message.trim()
                         ? "is-valid"
                         : ""
@@ -377,13 +414,11 @@ const Forms_email = () => {
                     onChange={handleChange}
                     required
                   ></textarea>
-                  {validated && errors.validationTextarea ? (
-                    <div className="invalid-feedback">
-                      {errors.validationTextarea}
-                    </div>
+                  {validated && errors.message ? (
+                    <div className="invalid-feedback">{errors.message}</div>
                   ) : (
                     validated &&
-                    !errors.validationTextarea &&
+                    !errors.message &&
                     formData.message.trim() && (
                       <div className="valid-feedback">Parece bom!</div>
                     )
@@ -396,6 +431,8 @@ const Forms_email = () => {
                   </label>
                   <input
                     type="file"
+                    multiple={true}
+                    onEncrypted="multipart/form-data"
                     className={`form-control ${
                       validated && errors.file
                         ? "is-invalid"
@@ -408,6 +445,7 @@ const Forms_email = () => {
                         : ""
                     }`}
                     id="file"
+                    name="file"
                     aria-label="file example"
                     onChange={handleChange}
                   />
@@ -416,14 +454,20 @@ const Forms_email = () => {
                   ) : (
                     validated &&
                     !errors.file &&
-                    formData.file && (
-                      <div className="valid-feedback">Parece bom!</div>
+                    formData.file &&
+                    ALLOWED_FILE_TYPES.includes(formData.file.type) &&
+                    formData.file.size <= MAX_FILE_SIZE && (
+                      <div className="valid-feedback">Arquivo válido!</div>
                     )
                   )}
                 </div>
                 <div className="col-12">
-                  <button className="btn btn-primary" type="submit">
-                    Enviar Formulário
+                  <button
+                    className="btn btn-primary"
+                    type="submit"
+                    disabled={isSending}
+                  >
+                    {isSending ? "Enviando..." : "Enviar Formulário"}
                   </button>
                 </div>
               </form>
@@ -436,3 +480,4 @@ const Forms_email = () => {
 };
 
 export default Forms_email;
+
