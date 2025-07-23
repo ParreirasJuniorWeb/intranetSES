@@ -5,6 +5,7 @@ import "../App.css";
 import { Link } from "react-router-dom";
 import Forms_email from "../components/forms_email";
 import Arcodeao_teams from "../components/arcodeao_teams";
+import Form_assinatura_email from "../components/Form_assinatura_email";
 
 const Contato = () => {
   return (
@@ -34,6 +35,12 @@ const Contato = () => {
                 <h3 className="p-2 mt-2 display-6">
                   Equipe Técnica / E-mail / Ramal{" "}
                 </h3>
+                <small>
+                  ChatBot_ATI_SES:{" "}
+                  <a href="https://app.chatvolt.ai/@chat_bot_ti_ses">
+                    Clique Aqui!
+                  </a>
+                </small>
                 <ul className="list-group mt-4">
                   <li className="list-group-item">
                     Alexander Spelta /
@@ -101,6 +108,8 @@ const Contato = () => {
       </section>
       <br />
       <Forms_email />
+      <br />
+      {/* <Form_assinatura_email /> */}
       <Footer />
     </>
   );
