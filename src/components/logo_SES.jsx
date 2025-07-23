@@ -6,15 +6,18 @@ const Logo_SES = () => {
       {/* <!-- Logo SES  --> */}
       <div className="row">
         <div className="col-md-6" data-aos="fade-up">
-          <Link to="/vpn" className="text-decoration-none">
+          <a
+            href="https://www.saude.mg.gov.br/"
+            className="text-decoration-none"
+          >
             <div className="link-content mt-3">
               <img src="src/img/logo-ses.png" alt="image" className="mt-5" />
             </div>
-          </Link>
+          </a>
         </div>
       </div>
     </>
   );
 };
 
-export default Logo_SES;
+export default Logo_SES
