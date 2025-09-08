@@ -125,7 +125,7 @@ const FormsEmailServerless = () => {
         setIsSending(false);
         // Disparar envio de e-mail aqui usando os dados do React state
         const destinatario = 'suporteti.ca@saude.mg.gov.br,central.seplag@positivo.com.br';
-        const assunto = formData.subject;
+        const assunto = `Chamado Cidade Administrativa - ${formData.subject}`;
         const cco = formData.email; // E-mail do remetente no campo CCO (se necessário)
         // Corpo do e-mail pode incluir outros campos, como nome, e-mail, DDD, ramal, etc.
         const corpo = 
