@@ -1,0 +1,13 @@
+{
+  "builds": [
+    {
+      "src": "apps/front-end/package.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024
+    }
+  }
+}
