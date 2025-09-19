@@ -1,6 +1,6 @@
 import React from "react";
 import Navbar from "../components/Navbar";
-import Footer from "../components/footer";
+import Footer from "../components/Footer";
 import icon_excel from "../icons/excel-icon.png";
 import icon_pdf from "../icons/pdf-icon.png";
 import icon_word from "../icons/word-icon.png";
